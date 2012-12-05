@@ -93,6 +93,64 @@
              (-> row (.createCell 3) (.setCellValue true)))
            (.write workbook out))))))
 
+; .getRichStringCellValue ???
+(defmulti read-cell #(.getCellType %))
+(defmethod read-cell Cell/CELL_TYPE_BLANK   [cell] nil)
+(defmethod read-cell Cell/CELL_TYPE_BOOLEAN [cell] (.getBooleanCellValue cell))
+(defmethod read-cell Cell/CELL_TYPE_ERROR   [cell] (.getErrorCellValue cell))
+(defmethod read-cell Cell/CELL_TYPE_FORMULA [cell] (.getCellFormula cell))
+(defmethod read-cell Cell/CELL_TYPE_NUMERIC [cell] (if (DateUtil/isCellDateFormatted cell)
+                                                     (.getDateCellValue cell)
+                                                     (.getNumericCellValue cell)))
+(defmethod read-cell Cell/CELL_TYPE_STRING  [cell] (.getStringCellValue cell))
+
+(defmulti set-border! (fn [_ aside _] aside))
+(defmethod set-border! :top    [cellstyle _ border-style] (.setBorderTop cellstyle border-style))
+(defmethod set-border! :bottom [cellstyle _ border-style] (.setBorderBottom cellstyle border-style))
+(defmethod set-border! :left   [cellstyle _ border-style] (.setBorderLeft cellstyle border-style))
+(defmethod set-border! :right  [cellstyle _ border-style] (.setBorderRight cellstyle border-style))
+
+(defmulti set-border-color! (fn [_ aside _] aside))
+(defmethod set-border-color! :top    [cellstyle _ color] (.setBorderTopColor cellstyle (.getIndex color)))
+(defmethod set-border-color! :bottom [cellstyle _ color] (.setBorderBottomColor cellstyle (.getIndex color)))
+(defmethod set-border-color! :left   [cellstyle _ color] (.setBorderLeftColor cellstyle (.getIndex color)))
+(defmethod set-border-color! :right  [cellstyle _ color] (.setBorderRightColor cellstyle (.getIndex color)))
+
+
+(defn draw-border-example-2
+  "罫線を描いてみる。"
+  ([] (draw-border-example-2 "workbook-03.xls"))
+  ([fname]
+     (with-open [out (FileOutputStream. fname)]
+       (let [workbook (HSSFWorkbook.)
+             helper (.getCreationHelper workbook)
+             sheet (.createSheet workbook "new-sheet")
+             cellstyle (.createCellStyle workbook)]
+         (doto cellstyle
+           (set-border! :bottom CellStyle/BORDER_THIN)
+           (set-border-color! :bottom  IndexedColors/BLACK)
+           (set-border! :left CellStyle/BORDER_THIN)
+           (set-border-color! :left IndexedColors/GREEN)
+           (set-border! :right CellStyle/BORDER_THIN)
+           (set-border-color! :right IndexedColors/BLUE)
+           (set-border! :top CellStyle/BORDER_THIN)
+           (set-border-color! :top IndexedColors/BLACK))
+         (-> (.createRow sheet 1)
+             (.createCell  1)
+             (.setCellStyle cellstyle))
+         (.write workbook out)))))
+
+
+#_(defn set-cell! [^Cell cell value]
+  (if (nil? value)
+    (let [^String null nil]
+      (.setCellValue cell null)) ;do not call setCellValue(Date) with null
+    (let [converted-value (cond (number? value) (double value)
+                                true value)]
+      (.setCellValue cell converted-value)
+      (if (date-or-calendar? value)
+        (apply-date-format! cell "m/d/yy")))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #_(comment
     ;; 以下メモ
